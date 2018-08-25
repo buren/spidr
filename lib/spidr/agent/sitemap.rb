@@ -16,8 +16,8 @@ module Spidr
     #
     # Initializes the sitemap fetcher.
     #
-    def initialize_sitemap
-      @sitemap = true
+    def initialize_sitemap(options)
+      @sitemap = options.fetch(:sitemap, false)
     end
 
     #
@@ -31,12 +31,21 @@ module Spidr
       return [] unless @sitemap
       base_url = to_base_url(url)
 
-      if @robots
-        if urls = @robots.other_values(base_url)['Sitemap']
+      # Support passing sitemap: '/path/to/sitemap.xml'
+      if @sitemap.is_a?(String)
+        sitemap_path = @sitemap
+        sitemap_path = "/#{@sitemap}" unless @sitemap.start_with?('/')
+        return get_sitemap_urls(url: "#{base_url}#{sitemap_path}")
+      end
+
+      # Check /robots.txt
+      if sitemap_robots
+        if urls = sitemap_robots.other_values(base_url)['Sitemap']
           return urls.flat_map { |u| get_sitemap_urls(url: u) }
         end
       end
 
+      # Check for sitemap.xml in common locations
       COMMON_SITEMAP_LOCATIONS.each do |path|
         if (page = get_page("#{base_url}/#{path}")).code == 200
           return get_sitemap_urls(page: page)
@@ -47,6 +56,17 @@ module Spidr
     end
 
     private
+
+    def sitemap_robots
+      return @robots if @robots
+      return unless @sitemap == :robots
+
+      unless Object.const_defined?(:Robots)
+        raise(ArgumentError,":robots option given but unable to require 'robots' gem")
+      end
+
+      Robots.new(@user_agent)
+    end
 
     def get_sitemap_urls(url: nil, page: nil)
       page = get_page(url) if page.nil?
