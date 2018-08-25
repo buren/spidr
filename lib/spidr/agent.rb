@@ -223,9 +223,7 @@ module Spidr
         initialize_robots
       end
 
-      if options.fetch(:sitemap,false)
-        initialize_sitemap
-      end
+      initialize_sitemap(options)
 
       yield self if block_given?
     end

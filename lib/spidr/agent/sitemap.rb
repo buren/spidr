@@ -16,8 +16,8 @@ module Spidr
     #
     # Initializes the sitemap fetcher.
     #
-    def initialize_sitemap
-      @sitemap = true
+    def initialize_sitemap(options)
+      @sitemap = options.fetch(:sitemap, false)
     end
 
     #
@@ -31,8 +31,8 @@ module Spidr
       return [] unless @sitemap
       base_url = to_base_url(url)
 
-      if @robots
-        if urls = @robots.other_values(base_url)['Sitemap']
+      if sitemap_robots
+        if urls = sitemap_robots.other_values(base_url)['Sitemap']
           return urls.flat_map { |u| get_sitemap_urls(url: u) }
         end
       end
@@ -47,6 +47,14 @@ module Spidr
     end
 
     private
+
+    def sitemap_robots
+      return @robots if @robots
+
+      if Object.const_defined?(:Robots)
+        Robots.new(@user_agent)
+      end
+    end
 
     def get_sitemap_urls(url: nil, page: nil)
       page = get_page(url) if page.nil?
